@@ -246,8 +246,9 @@ class MY_Model extends CI_Model implements Active_Record {
         $this->db->order_by($this->_keyField, 'asc');
         if (($what == 'period') && ($which < 9)) {
             $this->db->where($what, $which); // special treatment for period
-        } else
-            $this->db->where($what, $which);
+        } else {
+            $this->db->where($what, $which); 
+        }
         $query = $this->db->get($this->_tableName);
         return $query->result();
     }
@@ -282,7 +283,7 @@ class MY_Model2 extends MY_Model {
     // Retrieve an existing DB record as an object
     function get($key1, $key2) {
         $this->db->where($this->_keyField, $key1);
-        $this->db->where($this->_keyField2, $key2);
+        $this->db->where($this->_keyField2, $key2); 
         $query = $this->db->get($this->_tableName);
         if ($query->num_rows() < 1)
             return null;
@@ -366,4 +367,3 @@ class MY_Model2 extends MY_Model {
 
 }
 
-/* End of file */
