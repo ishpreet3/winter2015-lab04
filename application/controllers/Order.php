@@ -13,12 +13,17 @@ class Order extends Application {
 
     function __construct() {
         parent::__construct();
+        $this->load->model('Orders');
+        $this->load->model('Orderitems');
+        $this->load->model('Menu');
     }
 
     // start a new order
     function neworder() {
-        //FIXME
-
+        $order_num = $this->Orders->highest() + 1;
+        $date = date('Y/m/d H:i:s');
+        $this->Orders->add( array('num' => $order_num,  'date' => $date, 
+                                     'status' => 'a', 'total' => $this->Orders->total($order_num)));
         redirect('/order/display_menu/' . $order_num);
     }
 
@@ -29,47 +34,26 @@ class Order extends Application {
 
         $this->data['pagebody'] = 'show_menu';
         $this->data['order_num'] = $order_num;
-        //FIXME
-
+        //FIXME <- added the title tag
+        $this->data['title'] = 'Order # ' . $order_num . ' ($' . $this->Orders->total($order_num) . ')';
         // Make the columns
         $this->data['meals'] = $this->make_column('m');
         $this->data['drinks'] = $this->make_column('d');
         $this->data['sweets'] = $this->make_column('s');
 
-	// Bit of a hokey patch here, to work around the problem of the template
-	// parser no longer allowing access to a parent variable inside a
-	// child loop - used for the columns in the menu display.
-	// this feature, formerly in CI2.2, was removed in CI3 because
-	// it presented a security vulnerability.
-	// 
-	// This means that we cannot reference order_num inside of any of the
-	// variable pair loops in our view, but must instead make sure
-	// that any such substitutions we wish make are injected into the 
-	// variable parameters
-	// Merge this fix into your origin/master for the lab!
-	$this->hokeyfix($this->data['meals'],$order_num);
-	$this->hokeyfix($this->data['drinks'],$order_num);
-	$this->hokeyfix($this->data['sweets'],$order_num);
-	// end of hokey patch
-	
         $this->render();
     }
 
-    // inject order # into nested variable pair parameters
-    function hokeyfix($varpair,$order) {
-	foreach($varpair as &$record)
-	    $record->order_num = $order;
-    }
-    
     // make a menu ordering column
     function make_column($category) {
-        //FIXME
+        //FIXME <- added this line to get the categories
+        $items = $this->Menu->some('category', $category); 
         return $items;
     }
 
     // add an item to an order
     function add($order_num, $item) {
-        //FIXME
+        $this->Orders->add_item($order_num, $item);
         redirect('/order/display_menu/' . $order_num);
     }
 
@@ -78,20 +62,47 @@ class Order extends Application {
         $this->data['title'] = 'Checking Out';
         $this->data['pagebody'] = 'show_order';
         $this->data['order_num'] = $order_num;
-        //FIXME
-
-        $this->render();
+        //FIXME <- gets a list of all the ordered items and puts the important info in to an array
+        $items = array();
+        $allOrderedItems = $this->Orderitems->some('order', $order_num);
+        foreach ($allOrderedItems as $orderedItem){
+            $item_details = $this->Menu->get($orderedItem->item);
+            $items[] = array('quantity' => $orderedItem->quantity, 'code' => $item_details->code,
+                              'price' => $item_details->price, 'name' => $item_details->name);
+        }
+        $this->data['items'] = $items;
+        $this->data['total'] = $this->Orders->total($order_num);
+        if($this->Orders->validate($order_num))
+        {
+            $this->render();
+        }
+        else {
+            echo "<script type='text/javascript'>\n";
+            echo "alert('Error: You need one item from each category to proceed, use the back button in your browser to continue shopping.');\n";
+            echo "</script>";
+        }
+        
     }
 
     // proceed with checkout
     function proceed($order_num) {
-        //FIXME
+        //FIXME <- updates the orders table with the total and as completed then returns to the home page
+        $date = date('Y/m/d H:i:s');
+        $record = array('num' => $order_num,  'date' => $date, 
+                                     'status' => 'c', 'total' => $this->Orders->total($order_num));
+        $this->Orders->update($record);
         redirect('/');
     }
 
     // cancel the order
+    // delete all items from this order in the orderitems table
     function cancel($order_num) {
-        //FIXME
+        //FIXME <-deletes the current items in the orderitems table for the current order, and marks order as cancelled (x)
+        $date = date('Y/m/d H:i:s');
+        $record = array('num' => $order_num,  'date' => $date, 
+                                     'status' => 'x', 'total' => $this->Orders->total($order_num));
+        $this->Orders->update($record);
+        $this->Orderitems->delete_some($order_num);
         redirect('/');
     }
 
